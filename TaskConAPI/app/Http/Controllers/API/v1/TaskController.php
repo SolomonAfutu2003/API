@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\TaskRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
-use Illuminate\Http\Request;
+// use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
@@ -15,10 +15,9 @@ class TaskController extends Controller
      */
     public function index()
     {
-        $tasks = TaskResource::collection(Task::with('user')->paginate(2));
-        return response()->json([
-            $tasks
-        ], 200);
+        $user = request()->user();
+        $tasks = $user->task()->with('user')->paginate(2);
+        return TaskResource::collection($tasks);
     }
 
     /**
@@ -28,7 +27,7 @@ class TaskController extends Controller
     {
         $input = $request->validated();
 
-        $input["user_id"] = 1;
+        $input["user_id"] = $request->user()->id;
 
         $createdTask = Task::create($input);
 
@@ -40,6 +39,12 @@ class TaskController extends Controller
      */
     public function show(Task $task)
     {
+        $user = request()->user();
+
+        if ($user->id != $task->user_id) {
+            abort(403, "Not Allowed");
+        };
+
         return response()->json([
             "task" => new TaskResource($task)
         ], 200);
@@ -54,6 +59,12 @@ class TaskController extends Controller
 
         $updated = $task->update($input);
 
+        $user = request()->user();
+
+        if ($user->id != $task->user_id) {
+            abort(403, "Not Allowed");
+        };
+
         return response()->json([
             "updated_task" => new TaskResource($updated)
         ]);
@@ -65,6 +76,11 @@ class TaskController extends Controller
     public function destroy(Task $task)
     {
         $task->delete();
+        $user = request()->user();
+
+        if ($user->id != $task->user_id) {
+            abort(403, "Not Allowed");
+        };
         return response()->noContent();
     }
 }
